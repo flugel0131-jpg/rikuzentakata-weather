@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>陸前高田市 気象注意報通知</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<h1>陸前高田市 気象注意報</h1>
+<p>対象：</p>
+<ul>
+<li>陸上の強風注意報（発表／解除）</li>
+<li>乾燥注意報（発表／解除）</li>
+</ul>
+
+<button onclick="requestNotify()">🔔 通知を有効にする</button>
+
+<ul id="log"></ul>
+
+<script>
+let last = {};
+
+function requestNotify(){
+  Notification.requestPermission().then(p=>{
+    if(p==="granted"){
+      alert("通知が有効になりました");
+    }
+  });
+}
+
+async function check(){
+  const res = await fetch("https://api.alert-jp.org/api/v1/alerts?limit=100");
+  const data = await res.json();
+
+  data.forEach(a=>{
+    if(!a.area?.includes("陸前高田市")) return;
+    if(!["強風注意報","乾燥注意報"].includes(a.type)) return;
+
+    const key = a.type;
+    const status = a.status;
+
+    if(last[key] !== status){
+      new Notification(`陸前高田市 ${a.type}`,{
+        body: status==="発表" ? "注意報が発表されました" : "注意報が解除されました"
+      });
+
+      last[key] = status;
+
+      const li = document.createElement("li");
+      li.textContent = `${new Date().toLocaleString()} ${a.type}：${status}`;
+      document.getElementById("log").prepend(li);
+    }
+  });
+}
+
+setInterval(check, 300000); // 5分
+check();
+</script>
+</body>
+</html>
