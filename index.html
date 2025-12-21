@@ -2,81 +2,31 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>陸前高田市 気象注意報（陸上限定）</title>
+<title>陸前高田市 気象注意報</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 
 <h1>陸前高田市 気象注意報</h1>
 
-<p><strong>監視対象</strong></p>
-<ul>
-<li>陸上の強風注意報（発表／解除）</li>
-<li>乾燥注意報（発表／解除）</li>
+<ul id="status">
+  <li>陸上の強風注意報：確認中</li>
+  <li>乾燥注意報：確認中</li>
 </ul>
 
-<button onclick="enableNotify()">🔔 通知を有効にする</button>
-
-<h2>履歴</h2>
-<ul id="log"></ul>
-
 <script>
-let lastStatus = {};
+async function update() {
+  const res = await fetch("★Cloudflare Worker のURL★");
+  const data = await res.json();
 
-function enableNotify() {
-  Notification.requestPermission().then(p => {
-    if (p === "granted") {
-      alert("通知が有効になりました");
-    }
-  });
+  document.getElementById("status").innerHTML = `
+    <li>陸上の強風注意報：${data.landStrong ? "発表中" : "なし"}</li>
+    <li>乾燥注意報：${data.dry ? "発表中" : "なし"}</li>
+  `;
 }
 
-async function checkAlerts() {
-  try {
-    const res = await fetch("https://api.alert-jp.org/api/v1/alerts?limit=100");
-    const data = await res.json();
-
-    data.forEach(a => {
-      // 地域判定
-      if (!a.area?.includes("陸前高田市")) return;
-
-      // 乾燥注意報（区分なし）
-      if (a.type === "乾燥注意報") {
-        notify(a.type, a.status);
-      }
-
-      // 強風注意報（陸上限定）
-      if (
-        a.type === "強風注意報" &&
-        a.areas?.some(ar => ar.includes("陸上"))
-      ) {
-        notify("陸上の強風注意報", a.status);
-      }
-    });
-  } catch (e) {
-    console.error("取得エラー", e);
-  }
-}
-
-function notify(type, status) {
-  if (lastStatus[type] === status) return;
-
-  lastStatus[type] = status;
-
-  new Notification(`陸前高田市 ${type}`, {
-    body: status === "発表"
-      ? "注意報が発表されました"
-      : "注意報が解除されました"
-  });
-
-  const li = document.createElement("li");
-  li.textContent = `${new Date().toLocaleString()} ${type}：${status}`;
-  document.getElementById("log").prepend(li);
-}
-
-// 🔔 1分間隔（WebSocketなし最短）
-setInterval(checkAlerts, 60000);
-checkAlerts();
+setInterval(update, 60000);
+update();
 </script>
 
 </body>
